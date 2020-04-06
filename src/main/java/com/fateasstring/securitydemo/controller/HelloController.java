@@ -1,5 +1,7 @@
 package com.fateasstring.securitydemo.controller;
 
+import com.fateasstring.securitydemo.service.MethodService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,4 +27,23 @@ public class HelloController {
     public String login(){
         return "please login!!";
     }
+
+    @Autowired
+    MethodService methodService;
+
+    @GetMapping("/hello1")
+    public String hello1(){
+        return methodService.admin();
+    }
+
+    @GetMapping("/hello2")
+    public String hello2(){
+        return methodService.user();
+    }
+
+    @GetMapping("/hello3")
+    public String hello3(){
+        return methodService.hello();
+    }
+
 }

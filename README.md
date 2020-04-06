@@ -1,4 +1,4 @@
-# SecurityDemo
+# SecurityDemoadmin
 SpringBoot集成Security脚手架
 
 # 1.创建项目
@@ -673,3 +673,185 @@ BCryptPasswordEncoder方法采用SHA-256 +随机盐+密钥对密码进行加密�
 https://blog.csdn.net/qq_41256709/article/details/90212393
 
 https://www.cnblogs.com/chengxuxiaoyuan/p/11939084.html
+
+
+
+# 8.方法安全
+
+在MultiHttpSecurityConfig.class方法中添加 @EnableGlobalMethodSecurity注解
+
+代码如下：
+
+```java
+@Configuration
+@EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
+public class MultiHttpSecurityConfig {……}
+```
+
+新建service文件夹，新增类MethodService.class。代码如下：
+
+```java
+import org.springframework.security.access.annotation.Secured;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+
+@Service
+public class MethodService {
+
+    /** 只有admin的角色才能访问 */
+    @PreAuthorize("hasRole('admin')")
+    public String admin(){
+        return "hello admin!!";
+    }
+
+    @Secured("ROLE_user")
+    public String user(){
+        return "hello user!";
+    }
+
+    @PreAuthorize("hasAnyRole('admin','user')")
+    public String hello(){
+        return "hello hello!!";
+    }
+}
+
+```
+
+HelloController.class内新增代码：
+
+```java
+public class HelloController {
+    @Autowired
+    MethodService methodService;
+
+    @GetMapping("/hello1")
+    public String hello1(){
+        return methodService.admin();
+    }
+
+    @GetMapping("/hello2")
+    public String hello2(){
+        return methodService.user();
+    }
+
+    @GetMapping("/hello3")
+    public String hello3(){
+        return methodService.hello();
+    }
+}
+```
+
+分别使用fate和wu登陆，访问hello1、hello2、hello3方法
+
+http://localhost:8080/doLogin?username=fate&password=123
+
+http://localhost:8080/doLogin?username=wu&password=123
+
+http://localhost:8080/hello1
+
+会得到相应结果。
+
+# 9.基于数据库的认证
+
+新建数据库security，执行如下sql：
+
+```sql
+/*
+Navicat MySQL Data Transfer
+Source Server         : localhost
+Source Server Version : 50717
+Source Host           : localhost:3306
+Source Database       : security
+Target Server Type    : MYSQL
+Target Server Version : 50717
+File Encoding         : 65001
+Date: 2018-07-28 15:26:51
+*/
+
+SET FOREIGN_KEY_CHECKS=0;
+
+-- ----------------------------
+-- Table structure for role
+-- ----------------------------
+DROP TABLE IF EXISTS `role`;
+CREATE TABLE `role` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(32) DEFAULT NULL,
+  `nameZh` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Records of role
+-- ----------------------------
+INSERT INTO `role` VALUES ('1', 'dba', '数据库管理员');
+INSERT INTO `role` VALUES ('2', 'admin', '系统管理员');
+INSERT INTO `role` VALUES ('3', 'user', '用户');
+
+-- ----------------------------
+-- Table structure for user
+-- ----------------------------
+DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(32) DEFAULT NULL,
+  `password` varchar(255) DEFAULT NULL,
+  `enabled` tinyint(1) DEFAULT NULL,
+  `locked` tinyint(1) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Records of user
+-- ----------------------------
+INSERT INTO `user` VALUES ('1', 'root', '$2a$10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq', '1', '0');
+INSERT INTO `user` VALUES ('2', 'admin', '$2a$10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq', '1', '0');
+INSERT INTO `user` VALUES ('3', 'sang', '$2a$10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq', '1', '0');
+
+-- ----------------------------
+-- Table structure for user_role
+-- ----------------------------
+DROP TABLE IF EXISTS `user_role`;
+CREATE TABLE `user_role` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `uid` int(11) DEFAULT NULL,
+  `rid` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Records of user_role
+-- ----------------------------
+INSERT INTO `user_role` VALUES ('1', '1', '1');
+INSERT INTO `user_role` VALUES ('2', '1', '2');
+INSERT INTO `user_role` VALUES ('3', '2', '2');
+INSERT INTO `user_role` VALUES ('4', '3', '3');
+SET FOREIGN_KEY_CHECKS=1;
+```
+
+role：
+
+|  id  | name  | nameZH       |
+| :--: | ----- | ------------ |
+|      | dba   | 数据库管理员 |
+|  2   | admin | 系统管理员   |
+|  3   | user  | 用户         |
+
+user:
+
+|  id  | username | password                                                  | enabled | locked |
+| :--: | -------- | --------------------------------------------------------- | :-----: | :----: |
+|  1   | root     | $10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq |    1    |   0    |
+|  2   | admin    | $10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq |    1    |   0    |
+|  3   | sang     | $10$RMuFXGQ5AtH4wOvkUqyvuecpqUSeoxZYqilXzbz50dceRsga.WYiq |    1    |   0    |
+
+user_role:
+
+|  id  | uid  | rid  |
+| :--: | :--: | :--: |
+|  1   |  1   |  1   |
+|  2   |  1   |  2   |
+|  3   |  2   |  2   |
+|  4   |  3   |  3   |
+
+新建工程
